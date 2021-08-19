@@ -14,6 +14,6 @@ The schema is found in `schema.graphql`. this is where we define each type of en
 #### Subgraph.yaml
 The `subgraph.yaml` file is where we define the base contracts that the subgraph will track. In this case we only initially track `FusePoolDirectory`. From there we have event hooks setup to trigger specific mapping functions when a specific event is triggered on the the `FusePoolDirectory`, any monitored `Comptroller`, or any monitored `CToken`.
 
-#### Mappings/
+#### src/mappings/
 Within the mappings directory we have a bunch of files each one containing functions which are triggered by a specific event as defined in the `subgraph.yaml`
 
