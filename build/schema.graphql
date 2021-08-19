@@ -1,0 +1,162 @@
+type Ctoken @entity {
+  "id of this Ctoken"
+  id: ID!
+  "ERC20 underlying this Ctoken"
+  underlying: UnderlyingAsset!
+
+  "Pool/comptroller this Ctoken is associated with"
+  pool: Pool!
+  
+  "the reserveFactor"
+  reserveFactor: BigInt!
+
+  "administrator fee"
+  adminFee: BigInt!
+
+  "fuse fee"
+  fuseFee: BigInt!
+
+  "rate per block for loans"
+  borrowRatePerBlock: BigInt!
+
+  "supplier yield per block"
+  supplyRatePerBlock: BigInt!
+
+  "total amount borrowed"
+  totalBorrow: BigInt!
+
+  "total amount supplied value in USD"
+  totalBorrowUSD: BigInt!
+
+  "total liquidity, comes from getCash function"
+  liquidity: BigInt!
+
+  "total liquidity expressed in USD"
+  liquidityUSD: BigInt!
+
+  "total amount supplied"
+  totalSupply: BigInt!
+
+  "total amount supplied value in USD"
+  totalSupplyUSD: BigInt!
+
+  "total reserves"
+  totalReserves: BigInt!
+
+  "total admin fees"
+  totalAdminFees: BigInt!
+
+  "ctoken's name"
+  name: String!
+
+  "ctoken's symbol"
+  symbol: String!
+
+  "ctoken's decimals"
+  decimals: Int!
+
+  "ctoken's balance of underlying asset"
+  underlyingBalance: BigInt!
+
+  "borrow interestrate for this ctoken"
+  borrowAPR: BigDecimal
+
+  "supply yield rate for this ctoken. stored as int because BigDecimal doesnt support exponenet operations"
+  supplyAPY: BigDecimal
+
+  "total tokens seized in liquidations"
+  totalSeizedTokens: BigInt!
+}
+
+type Pool @entity {
+  "id of the Comptroller (its address)"
+  id: ID!
+
+  "address of this pool's comptroller (which is the pool)"
+  comptroller: Bytes!
+
+  "address of this comptroller"
+  address: Bytes
+  "array of Ctokens in this comptroller/pool"
+  assets: [Ctoken!]
+
+  "index of the pool for this comptroller"
+  index: BigInt
+
+  # Fields that match Rari's Fuse pool API
+  "Name of the Fuse pool this comptroller admins"
+  name: String
+
+  "oracle the pool of this comptroller uses"
+  priceOracle: Bytes!
+  "Factor used to determine repayAmount for liquidating"
+  closeFactor: BigInt
+  "The percent bonus liquidators get for liquidating for underlying pool"
+  liquidationIncentive: BigInt
+  "Max assets a single user can enter for underlying pool"
+  maxAssets: BigInt
+
+
+  "total amount supplied value in USD of all assets/ctokens in this pool"
+  totalBorrowUSD: BigInt!
+
+  "total liquidity expressed in USD of all assets/ctokens in this pool"
+  totalLiquidityUSD: BigInt!
+
+  "total amount supplied value in USD of all assets/ctokens in this pool"
+  totalSupplyUSD: BigInt!
+
+  "total tokens seized in liquidations of all this pools ctokens"
+  totalSeizedTokens: BigInt!
+}
+
+
+
+
+
+type UnderlyingAsset @entity {
+  "Token address"
+  id: ID!
+  "Token address"
+  address: Bytes!
+  "Token name"
+  name: String
+  "Token symbol"
+  symbol: String
+  "Array of ctokens this token is used in"
+  ctokens: [Ctoken!]
+
+  "Array of Pool this token is used in"
+  pools: [Pool!]
+
+  "number of decimal places"
+  decimals: Int
+
+  "last price any of the relevant price oracles of Pools using this UnderlyingAsset"
+  price: BigInt!
+
+  "total amount borrowed of all the assets ctokens"
+  totalBorrow: BigInt!
+
+  "total amount supplied value of all the assets ctokens in USD"
+  totalBorrowUSD: BigInt!
+
+  "total liquidity, comes from getCash function of all the assets ctokens"
+  totalLiquidity: BigInt!
+
+  "total liquidity of all the assets ctokens expressed in USD"
+  totalLiquidityUSD: BigInt!
+
+  "total amount of all the assets ctokens supplied"
+  totalSupply: BigInt!
+
+  "total amount supplied value of all the assets ctokens in USD"
+  totalSupplyUSD: BigInt!
+}
+
+type Utility @entity {
+  id: ID!
+  "last eth/usd price recorded"
+  ethPriceInDai: BigInt!
+  priceOracle: Bytes!
+}
