@@ -287,6 +287,15 @@ export class Pool extends Entity {
     this.set("id", Value.fromString(value));
   }
 
+  get blockCreated(): BigInt {
+    let value = this.get("blockCreated");
+    return value.toBigInt();
+  }
+
+  set blockCreated(value: BigInt) {
+    this.set("blockCreated", Value.fromBigInt(value));
+  }
+
   get comptroller(): Bytes {
     let value = this.get("comptroller");
     return value.toBytes();

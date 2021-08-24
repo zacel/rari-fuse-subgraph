@@ -72,6 +72,9 @@ type Pool @entity {
   "id of the Comptroller (its address)"
   id: ID!
 
+  "block the pool was created"
+  blockCreated: BigInt!
+
   "address of this pool's comptroller (which is the pool)"
   comptroller: Bytes!
 

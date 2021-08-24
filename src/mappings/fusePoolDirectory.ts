@@ -60,6 +60,7 @@ export function handlePoolRegistered(event: PoolRegistered): void {
   comp.totalBorrowUSD = BigInt.fromString("0");
   comp.totalLiquidityUSD = BigInt.fromString("0");
   comp.totalSeizedTokens = BigInt.fromString("0");
+  comp.blockCreated = event.block.number;
   
   
   ComptrollerTemplate.createWithContext(comptrollerAddress, context);
