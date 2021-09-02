@@ -5,6 +5,8 @@ import { EthBalance } from  "../../generated/templates/CToken/EthBalance"
 import { CToken } from  "../../generated/templates/CToken/CToken"
 import { Utility } from '../../generated/schema';
 
+export const BigZero = BigInt.fromString("0");
+
 export function calculateCTokenTotalSupply(instance: CToken): BigInt {
   const liquidity = instance.getCash();
   const totalBorrow = instance.totalBorrowsCurrent();

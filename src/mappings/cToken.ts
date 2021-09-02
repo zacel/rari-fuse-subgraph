@@ -9,7 +9,7 @@ import { ERC20 } from "../../generated/templates/CToken/ERC20";
 import { PriceOracle } from "../../generated/templates/CToken/PriceOracle";
 import { CToken as CTokenTemplate } from "../../generated/templates";
 import { log, dataSource, Address, BigDecimal, BigInt } from '@graphprotocol/graph-ts';
-import { calculateCTokenTotalSupply, convertMantissaToAPR, convertMantissaToAPY, getTotalInUSD, updateETHPrice } from "./helpers";
+import { BigZero, calculateCTokenTotalSupply, convertMantissaToAPR, convertMantissaToAPY, getTotalInUSD, updateETHPrice } from "./helpers";
 import {
     AccessControlledAggregator
 } from "../../generated/AccessControlledAggregator/AccessControlledAggregator"
@@ -117,6 +117,9 @@ function updateCtoken(entity: CtokenSchema | null, address: Address): void {
         asset.totalSupply = asset.totalSupply.plus(totalSupply.minus(entity.totalSupply));
     } else {
         asset.totalSupply = asset.totalSupply.minus(entity.totalSupply.minus(totalSupply));
+        if (BigZero.gt(asset.totalSupply)) {
+            asset.totalSupply = BigZero;
+        }
     }
 
     entity.totalSupply = totalSupply;
@@ -129,6 +132,12 @@ function updateCtoken(entity: CtokenSchema | null, address: Address): void {
         //total decreased
         pool.totalSupplyUSD = pool.totalSupplyUSD.minus(entity.totalSupplyUSD.minus(newTotalSupplyUSD));
         asset.totalSupplyUSD = asset.totalSupplyUSD.minus(entity.totalSupplyUSD.minus(newTotalSupplyUSD));
+        if (BigZero.gt(asset.totalSupplyUSD)) {
+            asset.totalSupplyUSD = BigZero;
+        }
+        if (BigZero.gt(pool.totalSupplyUSD)) {
+            pool.totalSupplyUSD = BigZero;
+        }
     }
     entity.totalSupplyUSD = newTotalSupplyUSD;
 
@@ -144,7 +153,8 @@ function updateCtoken(entity: CtokenSchema | null, address: Address): void {
 
 
         entity.liquidity = _cash.value;
-
+        //first reset the current liquidity based on updated prices 
+        asset.totalLiquidityUSD = getTotalInUSD(asset.totalLiquidity, ethUSD, asset.price);
         const newLiquidityUSD = getTotalInUSD(_cash.value, ethUSD, asset.price);
         if (entity.liquidityUSD.ge(newLiquidityUSD)) {
             //total increased
@@ -154,6 +164,12 @@ function updateCtoken(entity: CtokenSchema | null, address: Address): void {
             //total decreased
             pool.totalLiquidityUSD = pool.totalLiquidityUSD.minus(entity.liquidityUSD.minus(newLiquidityUSD));
             asset.totalLiquidityUSD = asset.totalLiquidityUSD.minus(entity.liquidityUSD.minus(newLiquidityUSD));
+            if (BigZero.gt(asset.totalLiquidityUSD)) {
+                asset.totalLiquidityUSD = BigZero;
+            }
+            if (BigZero.gt(pool.totalLiquidityUSD)) {
+                pool.totalLiquidityUSD = BigZero;
+            }
         }
         entity.liquidityUSD = newLiquidityUSD;
     }
@@ -166,14 +182,17 @@ function updateCtoken(entity: CtokenSchema | null, address: Address): void {
 
     const _totalBorrow = instance.try_totalBorrowsCurrent();
     if (!_totalBorrow.reverted) {
-          //this one is seperate from the other if block because usd increase doesn't always mean that real amount increased
-      if (entity.totalBorrow.ge(_price.value)) {
-        asset.totalBorrow = asset.totalBorrow.plus(_totalBorrow.value.minus(entity.totalBorrow));
-    } else {
-        asset.totalBorrow = asset.totalBorrow.minus(entity.totalBorrow.minus(_totalBorrow.value));
-    }
+        //this one is seperate from the other if block because usd increase doesn't always mean that real amount increased
+        if (entity.totalBorrow.ge(_price.value)) {
+            asset.totalBorrow = asset.totalBorrow.plus(_totalBorrow.value.minus(entity.totalBorrow));
+        } else {
+            asset.totalBorrow = asset.totalBorrow.minus(entity.totalBorrow.minus(_totalBorrow.value));
+            if (BigZero.gt(asset.totalBorrow)) {
+                asset.totalBorrow = BigZero;
+            }
+        }
 
-    entity.totalBorrow = _totalBorrow.value;
+        entity.totalBorrow = _totalBorrow.value;
 
         const newBorrowUSD = getTotalInUSD(_totalBorrow.value, ethUSD, asset.price);
         if (entity.liquidityUSD.ge(newBorrowUSD)) {
@@ -184,6 +203,12 @@ function updateCtoken(entity: CtokenSchema | null, address: Address): void {
             //total decreased
             pool.totalBorrowUSD = pool.totalBorrowUSD.minus(entity.totalBorrowUSD.minus(newBorrowUSD));
             asset.totalBorrowUSD = asset.totalBorrowUSD.minus(entity.totalBorrowUSD.minus(newBorrowUSD));
+            if (BigZero.gt(asset.totalBorrowUSD)) {
+                asset.totalBorrowUSD = BigZero;
+            }
+            if (BigZero.gt(pool.totalBorrowUSD)) {
+                pool.totalBorrowUSD = BigZero;
+            }
         }
         entity.totalBorrowUSD = newBorrowUSD;
     }
@@ -216,11 +241,11 @@ function updateCtoken(entity: CtokenSchema | null, address: Address): void {
     }
 
     const _supplyRatePerBlock = instance.try_supplyRatePerBlock();
-     if (!_supplyRatePerBlock.reverted) { 
+    if (!_supplyRatePerBlock.reverted) {
         entity.supplyRatePerBlock = _supplyRatePerBlock.value;
         log.warning("🚨 updating supplyAPY to {} from {}", [convertMantissaToAPY(BigDecimal.fromString(_supplyRatePerBlock.value.toString())).toString(), _supplyRatePerBlock.value.toString()]);
         entity.supplyAPY = convertMantissaToAPY(BigDecimal.fromString(_supplyRatePerBlock.value.toString()));
-     }
+    }
 
     entity.save();
     pool.save();

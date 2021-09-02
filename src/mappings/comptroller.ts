@@ -10,7 +10,7 @@ import { PriceOracle } from "../../generated/templates/CToken/PriceOracle";
 import { CToken as CTokenTemplate } from "../../generated/templates";
 import { log, dataSource, Address, BigInt, BigDecimal, DataSourceContext } from '@graphprotocol/graph-ts';
 
-import { getETHBalance, getTotalInUSD, calculateCTokenTotalSupply, convertMantissaToAPR, convertMantissaToAPY } from "./helpers";
+import { getETHBalance, getTotalInUSD, calculateCTokenTotalSupply, convertMantissaToAPR, convertMantissaToAPY, BigZero } from "./helpers";
 
 import { Comptroller } from "../../generated/templates/Comptroller/Comptroller";
 
@@ -223,6 +223,9 @@ export function handleMarketListed(event: MarketListed): void {
       asset.totalSupply = asset.totalSupply.plus(cTokenTotalSupply.minus(ct.totalSupply));
     } else {
       asset.totalSupply = asset.totalSupply.minus(ct.totalSupply.minus(cTokenTotalSupply));
+      if (BigZero.gt(asset.totalSupply)) {
+        asset.totalSupply = BigZero;
+    }
     }
 
     if (ct.totalSupplyUSD.ge(newSupplyUSD)) {
@@ -234,6 +237,13 @@ export function handleMarketListed(event: MarketListed): void {
       //total decreased
       comptroll.totalSupplyUSD = comptroll.totalSupplyUSD.minus(ct.totalSupplyUSD.minus(newSupplyUSD));
       asset.totalSupplyUSD = asset.totalSupplyUSD.minus(ct.totalSupplyUSD.minus(newSupplyUSD));
+      if (BigZero.gt(asset.totalSupplyUSD)) {
+        asset.totalSupplyUSD = BigZero;
+      }
+      if (BigZero.gt(comptroll.totalSupplyUSD)) {
+        comptroll.totalSupplyUSD = BigZero;
+      }
+
     }
     ct.totalSupplyUSD = newSupplyUSD;
 
@@ -246,6 +256,9 @@ export function handleMarketListed(event: MarketListed): void {
       asset.totalBorrow = asset.totalBorrow.plus(newTotalBorrow.minus(ct.totalBorrow));
     } else {
       asset.totalBorrow = asset.totalBorrow.minus(ct.totalBorrow.minus(newTotalBorrow));
+      if (BigZero.gt(asset.totalBorrow)) {
+        asset.totalBorrow = BigZero;
+      }
     }
 
     if (ct.totalBorrowUSD.ge(newBorrowUSD)) {
@@ -256,6 +269,12 @@ export function handleMarketListed(event: MarketListed): void {
       //total decreased
       comptroll.totalBorrowUSD = comptroll.totalBorrowUSD.minus(ct.totalBorrowUSD.minus(newBorrowUSD));
       asset.totalBorrowUSD = asset.totalBorrowUSD.minus(ct.totalBorrowUSD.minus(newBorrowUSD));
+      if (BigZero.gt(asset.totalBorrowUSD)) {
+        asset.totalBorrowUSD = BigZero;
+      }
+      if (BigZero.gt(comptroll.totalBorrowUSD)) {
+        comptroll.totalBorrowUSD = BigZero;
+      }
     }
     ct.totalBorrowUSD = newBorrowUSD;
 
@@ -273,7 +292,9 @@ export function handleMarketListed(event: MarketListed): void {
         asset.totalLiquidity = asset.totalLiquidity.minus(ct.liquidity.minus(_price.value));
       }
 
-      if (ct.liquidityUSD) {
+      if (!ct.liquidityUSD) {
+        ct.liquidityUSD = BigInt.fromString("0");
+      }
         if (ct.liquidityUSD.ge(newBorrowUSD)) {
           //total increased
           comptroll.totalLiquidityUSD = comptroll.totalLiquidityUSD.plus(newLiquidityUSD.minus(ct.liquidityUSD));
@@ -282,8 +303,13 @@ export function handleMarketListed(event: MarketListed): void {
           //total decreased
           comptroll.totalLiquidityUSD = comptroll.totalLiquidityUSD.minus(ct.liquidityUSD.minus(newLiquidityUSD));
           asset.totalLiquidityUSD = asset.totalLiquidityUSD.minus(ct.liquidityUSD.minus(newLiquidityUSD));
+          if (BigZero.gt(asset.totalLiquidityUSD)) {
+            asset.totalLiquidityUSD = BigZero;
+          }
+          if (BigZero.gt(comptroll.totalLiquidityUSD)) {
+            comptroll.totalLiquidityUSD = BigZero;
+          }
         }
-      }
 
       ct.liquidityUSD = newLiquidityUSD;
     }
@@ -292,9 +318,9 @@ export function handleMarketListed(event: MarketListed): void {
 
   } else {
     asset.price = BigInt.fromString("0");
-    ct.totalSupplyUSD = getTotalInUSD(cTokenTotalSupply, ethUSD, BigInt.fromString("0"));
-    ct.totalBorrowUSD = getTotalInUSD(instance.totalBorrowsCurrent(), ethUSD, BigInt.fromString("0"));
-    ct.liquidityUSD = getTotalInUSD(instance.getCash(), ethUSD, BigInt.fromString("0"));
+    ct.totalSupplyUSD = BigZero;//getTotalInUSD(cTokenTotalSupply, ethUSD, BigInt.fromString("0"));
+    ct.totalBorrowUSD = BigZero;//getTotalInUSD(instance.totalBorrowsCurrent(), ethUSD, BigInt.fromString("0"));
+    ct.liquidityUSD = BigZero;//getTotalInUSD(instance.getCash(), ethUSD, BigInt.fromString("0"));
   }
   asset.ctokens = asset.ctokens.concat([event.params.cToken.toHexString()])
   //asset.pools = asset.ctokens.concat([event.params.cToken.toHexString()])
