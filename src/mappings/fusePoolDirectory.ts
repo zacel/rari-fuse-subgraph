@@ -4,13 +4,13 @@ import { MarketListed } from "../../generated/FusePoolDirectory/Comptroller";
 
 import { Comptroller as ComptrollerTemplate } from "../../generated/templates";
 import {CToken as CTokenTemplate} from "../../generated/templates/CToken/CToken";
-import {ERC20 as ERC20Template} from "../../generated/templates/CToken/ERC20";
 import { Address, DataSourceContext } from "@graphprotocol/graph-ts";
 import { Ctoken, UnderlyingAsset, Pool as ComptrollerSchema } from "../../generated/schema";
 
 import {Comptroller} from "../../generated/templates/Comptroller/Comptroller";
 import { log, BigInt} from '@graphprotocol/graph-ts';
 import { updateETHPrice } from "./helpers";
+import { ADDRESS_ZERO, getOrCreateMarketWithId, ProtocolName, ProtocolType } from "./simplefi-common";
 
 
 /*  var ComptrollerABI = require("../../abis/Comptroller.json");
@@ -65,4 +65,6 @@ export function handlePoolRegistered(event: PoolRegistered): void {
   
   ComptrollerTemplate.createWithContext(comptrollerAddress, context);
   comp.save();
+
+   
 }

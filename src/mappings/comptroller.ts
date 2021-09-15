@@ -13,7 +13,7 @@ import { log, dataSource, Address, BigInt, BigDecimal, DataSourceContext } from 
 import { getETHBalance, getTotalInUSD, calculateCTokenTotalSupply, convertMantissaToAPR, convertMantissaToAPY, BigZero } from "./helpers";
 
 import { Comptroller } from "../../generated/templates/Comptroller/Comptroller";
-
+import {ADDRESS_ZERO, getOrCreateERC20Token, getOrCreateMarketWithId, ProtocolName, ProtocolType} from "./simplefi-common";
 
 
 function updateFromComptroller(entity: ComptrollerSchema | null, address: Address): void {
@@ -50,6 +50,8 @@ export function handleMarketListed(event: MarketListed): void {
 
   updateFromComptroller(comptroll, event.address);
 
+  
+
   let ct = new CtokenSchema(event.params.cToken.toHexString());
   ct.pool = event.address.toHexString();
 
@@ -64,6 +66,7 @@ export function handleMarketListed(event: MarketListed): void {
   ct.symbol = instance.symbol();
   ct.decimals = instance.decimals();
 
+  const simpleERC20 = getOrCreateERC20Token(event, underlying);
   const erc20 = ERC20.bind(underlying);
   const _balance = erc20.try_balanceOf(event.params.cToken);
   if (!_balance.reverted) {
@@ -223,9 +226,7 @@ export function handleMarketListed(event: MarketListed): void {
       asset.totalSupply = asset.totalSupply.plus(cTokenTotalSupply.minus(ct.totalSupply));
     } else {
       asset.totalSupply = asset.totalSupply.minus(ct.totalSupply.minus(cTokenTotalSupply));
-      if (BigZero.gt(asset.totalSupply)) {
-        asset.totalSupply = BigZero;
-    }
+     
     }
 
     if (ct.totalSupplyUSD.ge(newSupplyUSD)) {
@@ -338,4 +339,19 @@ export function handleMarketListed(event: MarketListed): void {
   
 
   comptroll.save();
+
+  //create CToken Token interface
+  const cTokenSimpleToken = getOrCreateERC20Token(event,event.params.cToken );
+
+   // Create market
+   getOrCreateMarketWithId(
+    event,
+    event.params.cToken.toHexString(),
+    event.params.cToken,
+    ProtocolName.RARI_FUSE,
+    ProtocolType.LENDING,
+    [simpleERC20],
+    cTokenSimpleToken,
+    [simpleERC20]
+  )
 }

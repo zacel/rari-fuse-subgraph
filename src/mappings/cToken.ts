@@ -1,24 +1,25 @@
 /* eslint-disable prefer-const */ // to satisfy AS compiler
 
 
-import { NewFuseFee, Borrow, NewAdminFee, NewComptroller, Mint, LiquidateBorrow, AccrueInterest } from "../../generated/templates/CToken/CToken";
+import { NewFuseFee, Borrow, NewAdminFee, NewComptroller, Mint, LiquidateBorrow, AccrueInterest, RepayBorrow } from "../../generated/templates/CToken/CToken";
 import { Utility, Ctoken as CtokenSchema, UnderlyingAsset as UnderlyingAssetSchema, Pool as ComptrollerSchema } from "../../generated/schema";
 
 import { CToken } from "../../generated/templates/CToken/CToken";
 import { ERC20 } from "../../generated/templates/CToken/ERC20";
 import { PriceOracle } from "../../generated/templates/CToken/PriceOracle";
 import { CToken as CTokenTemplate } from "../../generated/templates";
-import { log, dataSource, Address, BigDecimal, BigInt } from '@graphprotocol/graph-ts';
+import { log, dataSource, Address, BigDecimal, BigInt, ethereum } from '@graphprotocol/graph-ts';
 import { BigZero, calculateCTokenTotalSupply, convertMantissaToAPR, convertMantissaToAPY, getTotalInUSD, updateETHPrice } from "./helpers";
 import {
     AccessControlledAggregator
 } from "../../generated/AccessControlledAggregator/AccessControlledAggregator"
+import { borrowFromMarket, getOrCreateAccount, getOrCreateERC20Token, getOrCreateMarket, getOrCreateMarketWithId, ProtocolName, ProtocolType, repayToMarket } from "./simplefi-common";
 
 
 export function handleNewFuseFee(event: NewFuseFee): void {
     const entity = CtokenSchema.load(event.address.toHexString());
     //entity.fuseFee = event.params.newFuseFeeMantissa;
-    updateCtoken(entity, event.address);
+    updateCtoken(event, entity, event.address);
     entity.save();
 }
 
@@ -26,7 +27,7 @@ export function handleNewAdminFee(event: NewAdminFee): void {
     const entity = CtokenSchema.load(event.address.toHexString());
     //entity.adminFee = event.params.newAdminFeeMantissa;
 
-    updateCtoken(entity, event.address);
+    updateCtoken(event, entity, event.address);
     entity.save();
 
 }
@@ -35,7 +36,7 @@ export function handleNewComptroller(event: NewComptroller): void {
     const entity = CtokenSchema.load(event.address.toHexString());
     entity.pool = event.params.newComptroller.toHexString();
 
-    updateCtoken(entity, event.address);
+    updateCtoken(event, entity, event.address);
     entity.save();
 }
 
@@ -43,21 +44,68 @@ export function handleBorrow(event: Borrow): void {
     const entity = CtokenSchema.load(event.address.toHexString());
     //entity.totalBorrows = event.params.totalBorrows;
 
-    updateCtoken(entity, event.address);
+    const instance = CToken.bind(event.address);
+    const cTokenSimpleToken = getOrCreateERC20Token(event,event.address );
+    const simpleERC20 = getOrCreateERC20Token(event, Address.fromString(entity.underlying) as Address);
+    const erc20 = ERC20.bind(Address.fromString(entity.underlying) as Address);
+
+    const account = getOrCreateAccount(event.params.borrower);
+    const market =   getOrCreateMarketWithId(
+        event,
+        event.address.toHexString(),
+        instance._address,
+        ProtocolName.RARI_FUSE,
+        ProtocolType.LENDING,
+        [simpleERC20],
+        cTokenSimpleToken,
+        [simpleERC20]
+      )
+      borrowFromMarket(event,account, market,event.params.borrowAmount, [], [], erc20.balanceOf(event.params.borrower), [], []);
+
+    updateCtoken(event, entity, event.address);
+    entity.save();
+}
+
+export function handleRepayBorrow(event: RepayBorrow): void {
+    const entity = CtokenSchema.load(event.address.toHexString());
+    //entity.totalBorrows = event.params.totalBorrows;
+
+
+    const instance = CToken.bind(event.address);
+    const cTokenSimpleToken = getOrCreateERC20Token(event,event.address );
+    const simpleERC20 = getOrCreateERC20Token(event, Address.fromString(entity.underlying) as Address);
+    const erc20 = ERC20.bind(Address.fromString(entity.underlying) as Address);
+
+    const account = getOrCreateAccount(event.params.borrower);
+    const market =   getOrCreateMarketWithId(
+        event,
+        event.address.toHexString(),
+        instance._address,
+        ProtocolName.RARI_FUSE,
+        ProtocolType.LENDING,
+        [simpleERC20],
+        cTokenSimpleToken,
+        [simpleERC20]
+      )
+      repayToMarket(event,account, market,event.params.repayAmount, [], [], erc20.balanceOf(event.params.borrower), [], []);
+
+
+
+    updateCtoken(event, entity, event.address);
     entity.save();
 }
 
 export function handleMint(event: Mint): void {
     const entity = CtokenSchema.load(event.address.toHexString());
 
-    updateCtoken(entity, event.address);
+    updateCtoken(event, entity, event.address);
     entity.save();
 }
 
 export function handleLiquidateBorrow(event: LiquidateBorrow): void {
     const entity = CtokenSchema.load(event.address.toHexString());
 
-    updateCtoken(entity, event.address);
+    updateCtoken(event, entity, event.address);
     entity.totalSeizedTokens = entity.totalSeizedTokens.plus(event.params.seizeTokens);
     log.warning(`🚨2 update totalSeized to {}`, [event.params.seizeTokens.toString()]);
     const pool = ComptrollerSchema.load(entity.pool);
@@ -69,7 +117,7 @@ export function handleLiquidateBorrow(event: LiquidateBorrow): void {
 export function handleAccrueInterest(event: AccrueInterest): void {
     const entity = CtokenSchema.load(event.address.toHexString());
 
-    updateCtoken(entity, event.address);
+    updateCtoken(event, entity, event.address);
     entity.save();
 }
 
@@ -77,7 +125,7 @@ export function handleAccrueInterest(event: AccrueInterest): void {
 
 
 
-function updateCtoken(entity: CtokenSchema | null, address: Address): void {
+function updateCtoken(event: ethereum.Event, entity: CtokenSchema | null, address: Address): void {
     log.warning("🚨Updating Ctoken  now {}", [address.toHexString()]);
 
     updateETHPrice();
@@ -102,6 +150,7 @@ function updateCtoken(entity: CtokenSchema | null, address: Address): void {
 
     const instance = CToken.bind(address);
     const erc20 = ERC20.bind(Address.fromString(entity.underlying));
+    const simpleERC20 = getOrCreateERC20Token(event, Address.fromString(entity.underlying));
 
     entity.name = instance.name();
     entity.symbol = instance.symbol();

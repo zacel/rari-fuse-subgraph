@@ -94,6 +94,8 @@ templates:
           handler: handleNewAdminFee
         - event: Borrow(address,uint256,uint256,uint256)
           handler: handleBorrow
+        - event: RepayBorrow(address,address,uint256,uint256,uint256)
+          handler: handleBorrow
         - event: NewComptroller(address,address)
           handler: handleNewComptroller 
         - event: Mint(address,uint256,uint256)
